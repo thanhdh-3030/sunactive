@@ -13,6 +13,9 @@ from mmcv.cnn.utils import revert_sync_batchnorm
 from mmcv.runner import get_dist_info, init_dist
 from mmcv.utils import Config, DictAction, get_git_hash
 
+import sys
+sys.path.append('/home/dang.hong.thanh/mmsegmentation')
+
 from mmseg import __version__
 from mmseg.apis import init_random_seed, set_random_seed, train_segmentor
 from mmseg.datasets import build_dataset
@@ -20,10 +23,12 @@ from mmseg.models import build_segmentor
 from mmseg.utils import (collect_env, get_device, get_root_logger,
                          setup_multi_processes)
 
-
+import os 
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_LAUNCH_BLOCKING"]="1"
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a segmentor')
-    parser.add_argument('config', help='train config file path')
+    parser.add_argument('--config', help='train config file path')
     parser.add_argument('--work-dir', help='the dir to save logs and models')
     parser.add_argument(
         '--load-from', help='the checkpoint file to load weights from')
@@ -110,7 +115,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-
+    args.config='/home/dang.hong.thanh/mmsegmentation/configs/pspnet/pspnet_r18-d8_512x1024_80k_cityscapes.py'
     cfg = Config.fromfile(args.config)
     if args.cfg_options is not None:
         cfg.merge_from_dict(args.cfg_options)

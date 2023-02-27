@@ -69,6 +69,7 @@ class LoadImageFromFile(object):
         results['img'] = img
         results['img_shape'] = img.shape
         results['ori_shape'] = img.shape
+        # print(filename)
         # Set initial values for default meta_keys
         results['pad_shape'] = img.shape
         results['scale_factor'] = 1.0

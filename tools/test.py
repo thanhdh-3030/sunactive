@@ -23,8 +23,8 @@ from mmseg.utils import build_ddp, build_dp, get_device, setup_multi_processes
 def parse_args():
     parser = argparse.ArgumentParser(
         description='mmseg test (and eval) a model')
-    parser.add_argument('config', help='test config file path')
-    parser.add_argument('checkpoint', help='checkpoint file')
+    parser.add_argument('--config', help='test config file path')
+    parser.add_argument('--checkpoint', help='checkpoint file')
     parser.add_argument(
         '--work-dir',
         help=('if specified, the evaluation metric results will be dumped'
@@ -117,6 +117,9 @@ def parse_args():
 
 def main():
     args = parse_args()
+    args.config='configs/pspnet/pspnet_r18-d8_512x1024_80k_cityscapes.py'
+    args.checkpoint='/home/dang.hong.thanh/PT4AL/pspnet_r18-d8_512x1024_80k_cityscapes_20201225_021458-09ffa746.pth'
+    args.eval='mIoU'
     assert args.out or args.eval or args.format_only or args.show \
         or args.show_dir, \
         ('Please specify at least one operation (save/eval/format/show the '
