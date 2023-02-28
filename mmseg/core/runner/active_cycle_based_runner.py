@@ -11,7 +11,7 @@ import mmcv
 from mmcv.runner import EpochBasedRunner, get_host_info, RUNNERS, \
     save_checkpoint
 
-from mmseg.datasets import build_dataset, build_dataloader
+# from mmseg.datasets import build_dataset, build_dataloader
 
 
 @RUNNERS.register_module()
@@ -36,6 +36,7 @@ class ActiveCycleBasedRunner(EpochBasedRunner):
                  load_best=False,
                  restart_after_active=False,
                  **kwargs):
+        super(ActiveCycleBasedRunner, self).__init__(**kwargs)
         self.dataset_cfg = dataset_cfg
         self.dataloader_cfg = dataloader_cfg
         self.load_best = load_best
@@ -48,7 +49,6 @@ class ActiveCycleBasedRunner(EpochBasedRunner):
             self.load_best = False
         self.base_optimizer = self.optimizer
         self.base_model = self.model
-        super(ActiveCycleBasedRunner, self).__init__(**kwargs)
 
     @property
     def max_cycles(self):
@@ -73,7 +73,7 @@ class ActiveCycleBasedRunner(EpochBasedRunner):
         self.mode = 'train'
         self.data_loader = data_loader
         self._max_iters = self._max_epochs * len(self.data_loader)
-        for epoch in self.max_epochs:
+        for epoch in range(self.max_epochs):
             time.sleep(2)  # Prevent possible deadlock during epoch transition
             self.call_hook('before_train_epoch')
             for i, data_batch in enumerate(self.data_loader):
@@ -103,11 +103,15 @@ class ActiveCycleBasedRunner(EpochBasedRunner):
             del self.data_batch
 
         self._build_training_loader()
+        self._cycle += 1
+        # self.call_hook('after_active_cycle')
 
     def _build_training_loader(self):
+        from mmseg.datasets import build_dataset, build_dataloader
         """ This function rebuilt dataloader every new cycle """
-        train_datasets = [build_dataset(self.dataset_cfg)]
-        self._data_loaders = [build_dataloader(ds, **self.dataloader_cfg) for ds in train_datasets]
+        self.logger.info("Building new training dataset for next cycle")
+        train_dataset = build_dataset(self.dataset_cfg)
+        self._data_loaders[0] = build_dataloader(train_dataset, **self.dataloader_cfg)
 
     @abstractmethod
     def _strategy(self, data_batch):
@@ -162,6 +166,7 @@ class ActiveCycleBasedRunner(EpochBasedRunner):
 
         self._data_loaders = data_loaders
         while self.cycle < self.max_cycles:
+            self._epoch = 0
             for i, flow in enumerate(workflow):
                 mode, epochs = flow
                 if isinstance(mode, str):  # self.train()
