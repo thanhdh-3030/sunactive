@@ -17,7 +17,7 @@ import sys
 sys.path.append('/home/dang.hong.thanh/mmsegmentation')
 
 from mmseg import __version__
-from mmseg.apis import init_random_seed, set_random_seed, train_segmentor
+from mmseg.apis import init_random_seed, set_random_seed, train_segmentor, train_active_learning_segmentor
 from mmseg.datasets import build_dataset
 from mmseg.models import build_segmentor
 from mmseg.utils import (collect_env, get_device, get_root_logger,
@@ -28,6 +28,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]="1"
 os.environ["CUDA_LAUNCH_BLOCKING"]="1"
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a segmentor')
+    parser.add_argument('--active', help='train active learning')
     parser.add_argument('--config', help='train config file path')
     parser.add_argument('--work-dir', help='the dir to save logs and models')
     parser.add_argument(
@@ -233,15 +234,24 @@ def main():
     model.CLASSES = datasets[0].CLASSES
     # passing checkpoint meta for saving best checkpoint
     meta.update(cfg.checkpoint_config.meta)
-    train_segmentor(
-        model,
-        datasets,
-        cfg,
-        distributed=distributed,
-        validate=(not args.no_validate),
-        timestamp=timestamp,
-        meta=meta)
-
+    if not args.active:
+        train_segmentor(
+            model,
+            datasets,
+            cfg,
+            distributed=distributed,
+            validate=(not args.no_validate),
+            timestamp=timestamp,
+            meta=meta)
+    else:
+        train_active_learning_segmentor(
+            model,
+            datasets,
+            cfg,
+            distributed=distributed,
+            validate=(not args.no_validate),
+            timestamp=timestamp,
+            meta=meta)
 
 if __name__ == '__main__':
     main()
