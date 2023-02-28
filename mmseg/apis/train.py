@@ -86,6 +86,7 @@ def train_segmentor(model,
         num_gpus=len(cfg.gpu_ids),
         dist=distributed,
         seed=cfg.seed,
+        persistent_workers=False,
         drop_last=True)
     # The overall dataloader settings
     loader_cfg.update({
@@ -221,7 +222,7 @@ def train_active_learning_segmentor(model,
                 'Please use MMCV >= 1.4.4 for CPU training!'
         model = build_dp(model, cfg.device, device_ids=cfg.gpu_ids)
 
-    # prepare data loaders
+    # prepare training data loader
     dataset = dataset if isinstance(dataset, (list, tuple)) else [dataset]
     # The default loader config
     loader_cfg = dict(
@@ -229,19 +230,45 @@ def train_active_learning_segmentor(model,
         num_gpus=len(cfg.gpu_ids),
         dist=distributed,
         seed=cfg.seed,
-        drop_last=True)
+        drop_last=True,
+        persistent_workers=False)
     # The overall dataloader settings
     loader_cfg.update({
         k: v
         for k, v in cfg.data.items() if k not in [
             'train', 'val', 'test', 'train_dataloader', 'val_dataloader',
-            'test_dataloader'
+            'test_dataloader', 'unlabeled'
+        ]
+    })
+
+    # prepare unlabeled data loader
+    unlabeled_dataset = build_dataset(cfg.data.unlabeled)
+    # default loader config
+    unlabeled_loader_cfg = dict(
+        # cfg.gpus will be ignored if distributed
+        num_gpus=len(cfg.gpu_ids),
+        dist=distributed,
+        seed=cfg.seed,
+        drop_last=True,
+        persistent_workers=False)
+    # The overall dataloader settings
+    unlabeled_loader_cfg.update({
+        k: v
+        for k, v in cfg.data.items() if k not in [
+            'train', 'val', 'test', 'train_dataloader', 'val_dataloader',
+            'test_dataloader', 'unlabeled'
         ]
     })
 
     # The specific dataloader settings
     train_loader_cfg = {**loader_cfg, **cfg.data.get('train_dataloader', {})}
     data_loaders = [build_dataloader(ds, **train_loader_cfg) for ds in dataset]
+
+    # The specific unlabeled loader settings
+    unlabeled_loader_cfg = {**unlabeled_loader_cfg, **cfg.data.get('val_dataloader', {})}
+    unlabeled_loader = build_dataloader(unlabeled_dataset, **unlabeled_loader_cfg)
+
+    data_loaders.append(unlabeled_loader)
 
     # build runner
     optimizer = build_optimizer(model, cfg.optimizer)

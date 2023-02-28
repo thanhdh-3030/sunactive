@@ -1,7 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import argparse
 import copy
-import os
+import typing
 import os.path as osp
 import time
 import warnings
@@ -12,9 +12,6 @@ import torch.distributed as dist
 from mmcv.cnn.utils import revert_sync_batchnorm
 from mmcv.runner import get_dist_info, init_dist
 from mmcv.utils import Config, DictAction, get_git_hash
-
-import sys
-sys.path.append('/home/dang.hong.thanh/mmsegmentation')
 
 from mmseg import __version__
 from mmseg.apis import init_random_seed, set_random_seed, train_segmentor, train_active_learning_segmentor
@@ -28,7 +25,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]="1"
 os.environ["CUDA_LAUNCH_BLOCKING"]="1"
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a segmentor')
-    parser.add_argument('--active', help='train active learning')
+    parser.add_argument('--active', help='train active learning', action='store_true')
     parser.add_argument('--config', help='train config file path')
     parser.add_argument('--work-dir', help='the dir to save logs and models')
     parser.add_argument(
@@ -114,9 +111,13 @@ def parse_args():
     return args
 
 
+def check_active_in_config(workflow: typing.List[tuple]):
+    has_active = any((len(data_tuple) > 0 and any(e == "active" for e in data_tuple)) for data_tuple in workflow)
+    return has_active
+
+
 def main():
     args = parse_args()
-    args.config='/home/dang.hong.thanh/mmsegmentation/configs/pspnet/pspnet_r18-d8_512x1024_80k_cityscapes.py'
     cfg = Config.fromfile(args.config)
     if args.cfg_options is not None:
         cfg.merge_from_dict(args.cfg_options)
@@ -216,9 +217,8 @@ def main():
         model = revert_sync_batchnorm(model)
 
     logger.info(model)
-
     datasets = [build_dataset(cfg.data.train)]
-    if len(cfg.workflow) == 2:
+    if len(cfg.workflow) == 2 and not check_active_in_config(cfg.workflow):
         val_dataset = copy.deepcopy(cfg.data.val)
         val_dataset.pipeline = cfg.data.train.pipeline
         datasets.append(build_dataset(val_dataset))
